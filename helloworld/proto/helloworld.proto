@@ -1,0 +1,16 @@
+syntax = "proto3";
+
+package proto;  // 包名
+option go_package = 'grpc/service'; // 指定生成的go代码所存放的路径，不用提前创建
+
+service Greeter{
+  rpc SayHello (HelloRequest) returns (HelloResponse) {}
+}
+
+message HelloRequest{
+  string name = 1;
+}
+
+message HelloResponse{
+  string message = 1;
+}
