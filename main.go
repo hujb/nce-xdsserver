@@ -13,7 +13,7 @@ import (
 
 func init() {
 	//TODO
-	fmt.Println("执行进程初始化函数")
+	fmt.Println("执行进程初始化函数...")
 }
 
 func main() {
