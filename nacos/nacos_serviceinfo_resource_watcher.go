@@ -2,7 +2,7 @@ package nacos
 
 import (
 	"fmt"
-	"gitlab2.psbc.com/ecn/ecn-xdsserver/model"
+	"github.com/hujb/nce-xdsserver/model"
 	"time"
 )
 

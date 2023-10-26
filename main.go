@@ -3,10 +3,10 @@ package main
 import (
 	"fmt"
 	discoveryv3 "github.com/envoyproxy/go-control-plane/envoy/service/discovery/v3"
-	"gitlab2.psbc.com/ecn/ecn-xdsserver/common"
-	"gitlab2.psbc.com/ecn/ecn-xdsserver/common/resource"
-	"gitlab2.psbc.com/ecn/ecn-xdsserver/nacos"
-	"gitlab2.psbc.com/ecn/ecn-xdsserver/xds"
+	"github.com/hujb/nce-xdsserver/common"
+	"github.com/hujb/nce-xdsserver/common/resource"
+	"github.com/hujb/nce-xdsserver/nacos"
+	"github.com/hujb/nce-xdsserver/xds"
 	"google.golang.org/grpc"
 	"net"
 )

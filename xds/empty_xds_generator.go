@@ -1,7 +1,7 @@
 package xds
 
 import (
-	"gitlab2.psbc.com/ecn/ecn-xdsserver/common/resource"
+	"github.com/hujb/nce-xdsserver/common/resource"
 	"google.golang.org/protobuf/types/known/anypb"
 	"sync"
 )

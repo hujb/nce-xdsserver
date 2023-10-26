@@ -2,8 +2,8 @@ package common
 
 import (
 	"fmt"
-	"gitlab2.psbc.com/ecn/ecn-xdsserver/common/resource"
-	"gitlab2.psbc.com/ecn/ecn-xdsserver/xds"
+	"github.com/hujb/nce-xdsserver/common/resource"
+	"github.com/hujb/nce-xdsserver/xds"
 	"time"
 )
 

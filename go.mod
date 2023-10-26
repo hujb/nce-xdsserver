@@ -1,4 +1,4 @@
-module gitlab2.psbc.com/ecn/ecn-xdsserver
+module github.com/hujb/nce-xdsserver
 
 go 1.20
 

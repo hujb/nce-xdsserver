@@ -2,7 +2,7 @@ package main
 
 import (
 	"context"
-	pb "gitlab2.psbc.com/ecn/ecn-xdsserver/helloworld/proto/grpc/service"
+	pb "github.com/hujb/nce-xdsserver/helloworld/proto/grpc/service"
 	"google.golang.org/grpc"
 	"log"
 )

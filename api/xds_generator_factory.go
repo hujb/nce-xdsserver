@@ -1,8 +1,8 @@
 package api
 
 import (
-	"gitlab2.psbc.com/ecn/ecn-xdsserver/common/constant"
-	"gitlab2.psbc.com/ecn/ecn-xdsserver/xds"
+	"github.com/hujb/nce-xdsserver/common/constant"
+	"github.com/hujb/nce-xdsserver/xds"
 	"sync"
 )
 
