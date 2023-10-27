@@ -1,8 +1,8 @@
 package api
 
 import (
-	"github.com/hujb/nce-xdsserver/common/constant"
-	"github.com/hujb/nce-xdsserver/xds"
+	"github.com/nce/nce-xdsserver/common/constant"
+	"github.com/nce/nce-xdsserver/xds"
 	"sync"
 )
 

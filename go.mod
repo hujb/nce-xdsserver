@@ -1,4 +1,4 @@
-module github.com/hujb/nce-xdsserver
+module github.com/nce/nce-xdsserver
 
 go 1.20
 

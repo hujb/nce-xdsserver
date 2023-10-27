@@ -2,8 +2,8 @@ package common
 
 import (
 	"fmt"
-	"github.com/hujb/nce-xdsserver/common/resource"
-	"github.com/hujb/nce-xdsserver/xds"
+	"github.com/nce/nce-xdsserver/common/resource"
+	"github.com/nce/nce-xdsserver/xds"
 	"time"
 )
 

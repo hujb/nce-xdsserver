@@ -3,10 +3,10 @@ package main
 import (
 	"fmt"
 	discoveryv3 "github.com/envoyproxy/go-control-plane/envoy/service/discovery/v3"
-	"github.com/hujb/nce-xdsserver/common"
-	"github.com/hujb/nce-xdsserver/common/resource"
-	"github.com/hujb/nce-xdsserver/nacos"
-	"github.com/hujb/nce-xdsserver/xds"
+	"github.com/nce/nce-xdsserver/common"
+	"github.com/nce/nce-xdsserver/common/resource"
+	"github.com/nce/nce-xdsserver/nacos"
+	"github.com/nce/nce-xdsserver/xds"
 	"google.golang.org/grpc"
 	"net"
 )
@@ -19,7 +19,7 @@ func init() {
 func main() {
 	nacosXdsService := initXdsService()
 	server := grpc.NewServer()
-	listen, err := net.Listen("tcp", "192.168.0.102:28848")
+	listen, err := net.Listen("tcp", "192.168.1.83:28848")
 	if err != nil {
 		panic(err)
 	}

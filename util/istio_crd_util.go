@@ -2,8 +2,8 @@ package util
 
 import (
 	"github.com/golang/protobuf/ptypes/timestamp"
-	"github.com/hujb/nce-xdsserver/common/constant"
-	"github.com/hujb/nce-xdsserver/model"
+	"github.com/nce/nce-xdsserver/common/constant"
+	"github.com/nce/nce-xdsserver/model"
 	mcp_v1alpha1 "istio.io/api/mcp/v1alpha1"
 	"istio.io/api/networking/v1alpha3"
 	"time"

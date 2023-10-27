@@ -3,7 +3,7 @@ package main
 import (
 	"errors"
 	"fmt"
-	rs "github.com/hujb/nce-xdsserver/common/resource"
+	rs "github.com/nce/nce-xdsserver/common/resource"
 	"log"
 )
 
