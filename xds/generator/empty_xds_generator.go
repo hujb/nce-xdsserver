@@ -1,4 +1,4 @@
-package xds
+package generator
 
 import (
 	"github.com/nce/nce-xdsserver/common/resource"

@@ -1,44 +1,59 @@
 package model
 
-import "time"
+import (
+	"github.com/nce/nce-xdsserver/nacos/nacosResource"
+	"time"
+)
 
 type IstioService struct {
-	name            string
-	groupName       string
-	namespace       string
-	revision        int64
-	hosts           []*Instance
-	createTimeStamp time.Time
+	Name            string
+	GroupName       string
+	Namespace       string
+	Revision        int64
+	Hosts           []*nacosResource.NacosInstance
+	CreateTimeStamp time.Time
 }
 
-func NewIstioService(service *Service, mockServiceInfo *MockServiceInfo) *IstioService {
-	return &IstioService{
-		name:            service.GetName(),
-		groupName:       service.GetGroup(),
-		namespace:       service.GetNamespace(),
-		revision:        service.GetRevision(),
-		createTimeStamp: time.Now(),
-		hosts:           sanitizeServiceInfo(mockServiceInfo),
-	}
-}
+//func NewIstioService(service *Service, mockServiceInfo *MockServiceInfo) *IstioService {
+//	return &IstioService{
+//		name:            service.GetName(),
+//		groupName:       service.GetGroup(),
+//		namespace:       service.GetNamespace(),
+//		revision:        service.GetRevision(),
+//		createTimeStamp: time.Now(),
+//		hosts:           sanitizeServiceInfo(mockServiceInfo),
+//	}
+//}
+//
+//func NewIstioServiceByOld(service *Service, mockServiceInfo *MockServiceInfo, old *IstioService) *IstioService {
+//	return &IstioService{
+//		name:            service.GetName(),
+//		groupName:       service.GetGroup(),
+//		namespace:       service.GetNamespace(),
+//		revision:        service.GetRevision(),
+//		createTimeStamp: old.GetCreateTimeStamp(),
+//		hosts:           sanitizeServiceInfo(mockServiceInfo),
+//	}
+//}
 
-func NewIstioServiceByOld(service *Service, mockServiceInfo *MockServiceInfo, old *IstioService) *IstioService {
-	return &IstioService{
-		name:            service.GetName(),
-		groupName:       service.GetGroup(),
-		namespace:       service.GetNamespace(),
-		revision:        service.GetRevision(),
-		createTimeStamp: old.GetCreateTimeStamp(),
-		hosts:           sanitizeServiceInfo(mockServiceInfo),
-	}
-}
+//func sanitizeServiceInfo(mockServiceInfo *MockServiceInfo) []*nacosResource.NacosInstance {
+//	hosts := make([]*nacosResource.NacosInstance, 0)
+//	// TODO
+//	return hosts
+//}
 
-func sanitizeServiceInfo(mockServiceInfo *MockServiceInfo) []*Instance {
-	hosts := make([]*Instance, 0)
-	// TODO
-	return hosts
-}
-
-func (m *IstioService) GetCreateTimeStamp() time.Time {
-	return m.createTimeStamp
-}
+//func (m *IstioService) GetCreateTimeStamp() time.Time {
+//	return m.CreateTimeStamp
+//}
+//
+//func (m *IstioService) GetHosts() []*nacosResource.NacosInstance {
+//	return m.Hosts
+//}
+//
+//func (m *IstioService) GetNamespace() string {
+//	return m.Namespace
+//}
+//
+//func (m *IstioService) GetRevision() int64 {
+//	return m.Revision
+//}

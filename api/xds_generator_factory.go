@@ -2,7 +2,7 @@ package api
 
 import (
 	"github.com/nce/nce-xdsserver/common/constant"
-	"github.com/nce/nce-xdsserver/xds"
+	"github.com/nce/nce-xdsserver/xds/generator"
 	"sync"
 )
 
@@ -16,7 +16,7 @@ var once sync.Once
 func GetInstance() *XdsGeneratorFactory {
 	once.Do(func() {
 		_generatorMap := make(map[string]XdsGenerator)
-		_generatorMap[constant.SERVICE_ENTRY_TYPE] = xds.GetInstance()
+		_generatorMap[constant.SERVICE_ENTRY_PROTO_PACKAGE] = generator.GetInstance()
 		// TODO Support other type generator
 		singletonXdsGeneratorFactory = &XdsGeneratorFactory{generatorMap: _generatorMap}
 	})
@@ -28,7 +28,7 @@ func (factory *XdsGeneratorFactory) GetXdsGenerator(typeUrl string) XdsGenerator
 	if xdsGenerator != nil {
 		return xdsGenerator
 	} else {
-		return xds.GetSingletonEmptyXdsGenerator()
+		return generator.GetSingletonEmptyXdsGenerator()
 	}
 
 }

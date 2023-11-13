@@ -1,14 +1,17 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	discoveryv3 "github.com/envoyproxy/go-control-plane/envoy/service/discovery/v3"
-	"github.com/nce/nce-xdsserver/common"
-	"github.com/nce/nce-xdsserver/common/resource"
-	"github.com/nce/nce-xdsserver/nacos"
-	"github.com/nce/nce-xdsserver/xds"
+	"github.com/nce/nce-xdsserver/bootstrap"
 	"google.golang.org/grpc"
 	"net"
+	"os"
+)
+
+var (
+	grpcAddr = flag.String("grpcAddr", "127.0.0.1:28848", "Address of the xds server")
 )
 
 func init() {
@@ -17,27 +20,18 @@ func init() {
 }
 
 func main() {
-	nacosXdsService := initXdsService()
+	flag.Parse()
+	nacosXdsService, watcherTicker, eventsChan := bootstrap.InitXdsService()
 	server := grpc.NewServer()
-	listen, err := net.Listen("tcp", "192.168.1.83:28848")
+	listen, err := net.Listen("tcp", *grpcAddr)
 	if err != nil {
 		panic(err)
 	}
 	discoveryv3.RegisterAggregatedDiscoveryServiceServer(server, nacosXdsService)
-	watcher, watcherTicker := nacos.NewNacosServiceInfoResourceWatcher()
-	go watcher.ExecuteTimerTask()
-	eventProcess, eventTicker := common.NewEventProcessor(nacosXdsService)
-	go eventProcess.ExecuteTimerTask()
 	err = server.Serve(listen)
 	if err != nil {
-		watcherTicker.Stop()
-		eventTicker.Stop()
-		return
+		defer watcherTicker.Stop()
+		defer close(eventsChan)
+		os.Exit(-1)
 	}
-}
-
-func initXdsService() *xds.NacosXdsService {
-	nacosXdsService := xds.NewNacosXdsService()
-	resource.GetInstance()
-	return nacosXdsService
 }

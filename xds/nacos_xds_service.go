@@ -5,6 +5,7 @@ import (
 	xds "github.com/envoyproxy/go-control-plane/envoy/service/discovery/v3"
 	_ "github.com/golang/protobuf/ptypes/struct"
 	"github.com/golang/protobuf/ptypes/timestamp"
+	"github.com/nce/nce-xdsserver/api"
 	"github.com/nce/nce-xdsserver/common/constant"
 	"github.com/nce/nce-xdsserver/common/resource"
 	"google.golang.org/grpc/codes"
@@ -56,6 +57,7 @@ type NacosXdsService struct {
 	clients          map[string]*Connection
 	mutex            sync.RWMutex
 	connectionNumber int
+	resourceManager  *resource.ResourceManager
 }
 
 func NewNacosXdsService() *NacosXdsService {
@@ -65,9 +67,13 @@ func NewNacosXdsService() *NacosXdsService {
 	return nacosMcpService
 }
 
+func (n *NacosXdsService) SetResourceManager(manager *resource.ResourceManager) {
+	n.resourceManager = manager
+}
+
 func (n *NacosXdsService) StreamAggregatedResources(stream xds.AggregatedDiscoveryService_StreamAggregatedResourcesServer) error {
 	log.Println("process ads stream.....")
-	resource.GetInstance().InitResourceSnapshot()
+	resource.GetResourceManagerInstance().InitResourceSnapshot()
 	con := &Connection{
 		Stream:           stream,
 		LastRequestAcked: true,
@@ -137,8 +143,14 @@ func (n *NacosXdsService) Process(con *Connection, request *xds.DiscoveryRequest
 	if peerInfo, ok := peer.FromContext(stream.Context()); ok {
 		log.Println(peerInfo)
 	}
+	// 2023.10.30 22:57 start
+	response := n.buildDiscoveryResponse(request.TypeUrl, n.resourceManager.GetResourceSnapshot())
+	log.Printf("DEBUG DiscoveryResponse: %v", response)
+	con.NonceSent[response.TypeUrl] = response.Nonce
+	err := stream.Send(response)
+	// 2023.10.30 22:57 end
 
-	err := pushServiceEntries(request, con, stream)
+	//err := pushServiceEntries(request, con, stream) //2023.10.30 22:00废弃
 	//err := pushPeerAuthentication(stream)  验证不同类型的资源
 	if err != nil {
 		// push failed - disconnect
@@ -255,7 +267,7 @@ func pushServiceEntries(request *xds.DiscoveryRequest, con *Connection, stream x
 
 	response := &xds.DiscoveryResponse{
 		TypeUrl:     request.TypeUrl,
-		VersionInfo: resource.GetInstance().GetResourceSnapshot().GetVersion(),
+		VersionInfo: resource.GetResourceManagerInstance().GetResourceSnapshot().GetVersion(),
 		Nonce:       fmt.Sprintf("%v", time.Now()),
 		Resources:   resources,
 	}
@@ -303,6 +315,24 @@ func pushPeerAuthentication(stream xds.AggregatedDiscoveryService_StreamAggregat
 	})
 }
 
+// TODO 优化
+func (n *NacosXdsService) HandleEvent(resourceSnapshot *resource.ResourceSnapshot) {
+	if len(n.clients) == 0 {
+		return
+	}
+	log.Printf("xds: event changed trigger push.")
+	serviceEntryResponse := n.buildDiscoveryResponse(constant.SERVICE_ENTRY_PROTO_PACKAGE, resourceSnapshot)
+	log.Printf("连接数：%d", len(n.clients))
+	for _, c := range n.clients {
+		log.Println("sending resources count:", len(serviceEntryResponse.Resources), ", size:", n.sizeOfResources(serviceEntryResponse.Resources),
+			", request time:", c.LastRequestTime, ", connection id:", c.ConID)
+		log.Printf("DEBUG event changed DiscoveryResponse: %v", serviceEntryResponse)
+		c.NonceSent[serviceEntryResponse.TypeUrl] = serviceEntryResponse.Nonce
+		c.Stream.Send(serviceEntryResponse)
+	}
+
+}
+
 func (n *NacosXdsService) HandChangedEvent(resourceSnapshot *resource.ResourceSnapshot) {
 	log.Printf("xds: receive event changed trigger push.")
 	if len(n.clients) == 0 {
@@ -338,7 +368,7 @@ func (n *NacosXdsService) HandChangedEvent(resourceSnapshot *resource.ResourceSn
 
 	se.Endpoints = append(se.Endpoints, endpoint)
 
-	a, _ := anypb.New(se)
+	a, _ := anypb.New(endpoint)
 	//a, _ := types.MarshalAny(se)
 
 	mcpResource := mcp_v1alpha1.Resource{
@@ -382,4 +412,15 @@ func (n *NacosXdsService) sizeOfResources(rs []*anypb.Any) int64 {
 		length = length + len(r.Value)
 	}
 	return int64(length)
+}
+
+func (n *NacosXdsService) buildDiscoveryResponse(typeUrl string, resourceSnapshot *resource.ResourceSnapshot) *xds.DiscoveryResponse {
+	serviceEntryGenerator := api.GetInstance().GetXdsGenerator(typeUrl)
+	rawResources := serviceEntryGenerator.Generate(resourceSnapshot)
+	return &xds.DiscoveryResponse{
+		TypeUrl:     typeUrl,
+		VersionInfo: resourceSnapshot.GetVersion(),
+		Nonce:       fmt.Sprintf("%v", time.Now()),
+		Resources:   rawResources,
+	}
 }

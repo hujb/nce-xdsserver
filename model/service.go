@@ -1,16 +1,45 @@
 package model
 
 type Instance struct {
+	valid       bool
 	instanceId  string
-	port        uint64
+	port        uint32
 	ip          string
-	weight      float64
+	weight      uint32
 	metadata    map[string]string
 	clusterName string
 	serviceName string
 	enable      bool
 	healthy     bool
 	ephemeral   bool
+}
+
+func (i *Instance) GetIp() string {
+	return i.ip
+}
+
+func (i *Instance) GetPort() uint32 {
+	return i.port
+}
+
+func (i *Instance) GetWeight() uint32 {
+	return i.weight
+}
+
+func (i *Instance) GetMetadata() map[string]string {
+	return i.metadata
+}
+
+func (i *Instance) IsHealthy() bool {
+	return i.healthy
+}
+
+func (i *Instance) IsEnabled() bool {
+	return i.enable
+}
+
+func (i *Instance) GetClusterName() string {
+	return i.clusterName
 }
 
 type Service struct {

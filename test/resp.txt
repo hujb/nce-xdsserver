@@ -1,0 +1,73 @@
+http://127.0.0.1:8848/nacos/v1/console/namespaces
+{"code":200,"message":null,"data":[{"namespace":"","namespaceShowName":"public","namespaceDesc":null,"quota":200,"configCount":0,"type":0},{"namespace":"test","namespaceShowName":"test","namespaceDesc":"娴嬭瘯","quota":200,"configCount":0,"type":2}]}
+
+
+http://127.0.0.1:8848/nacos/v1/ns/catalog/services?hasIpCount=true&withInstances=false&pageNo=1&pageSize=10&serviceNameParam=&groupNameParam=&namespaceId=public
+{"count":3,
+ "serviceList":[
+   {
+    "name":"istio-test2",
+    "groupName":"DEFAULT_GROUP",
+    "clusterCount":1,
+    "ipCount":1,
+    "healthyInstanceCount":1,
+    "triggerFlag":"false"},
+   {
+    "name":"istio-test3",
+    "groupName":"DEFAULT_GROUP",
+    "clusterCount":1,
+    "ipCount":1,
+    "healthyInstanceCount":1,
+    "triggerFlag":"false"},
+ ]
+}
+
+http://127.0.0.1:8848/nacos/v1/ns/catalog/services?hasIpCount=true&withInstances=true&pageNo=1&pageSize=10&serviceNameParam=&groupNameParam=&namespaceId=public
+[{"namespace":null,
+  "serviceName":"istio-test2",
+  "groupName":"DEFAULT_GROUP",
+  "clusterMap":{
+     "DEFAULT":{
+       "clusterName":null,
+       "healthChecker":null,
+       "metadata":null,
+       "hosts":[{"valid":false,"metadata":{},"port":8848,"ip":"10.10.10.2","weight":1.0,"enabled":true}]
+     }
+   },
+   "metadata":{},
+   "protectThreshold":0.0,
+   "selector":null,
+   "ephemeral":null
+ },
+ {
+  "namespace":null,
+  "serviceName":"istio-test3",
+  "groupName":"DEFAULT_GROUP",
+  "clusterMap":{
+     "DEFAULT":{
+        "clusterName":null,
+        "healthChecker":null,
+        "metadata":null,
+        "hosts":[{"valid":true,"metadata":{},"port":8848,"ip":"10.10.10.3","weight":1.0,"enabled":true}]}
+     },
+   "metadata":{},
+   "protectThreshold":0.0,
+   "selector":null,
+   "ephemeral":null
+ }]
+
+
+
+http://127.0.0.1:8848/nacos/v1/ns/catalog/service?&groupName=&pageSize=10000&pageNo=1&namespaceId=public&serviceName=istio-test1
+
+
+
+
+2023/11/03 10:22:38 namespace=
+2023/11/03 10:22:38 namespace=test
+2023/11/03 10:22:38 instance=&{true  10.10.10.2 8848 1 false true false FUN-A-MDP istio-test2 map[] 0 0 0 }
+2023/11/03 10:22:38 instance=&{true  10.10.10.1 8848 1 false true false FUN-A-MDP istio-test1 map[] 0 0 0 }
+
+2023/11/03 10:23:37 instance=&{ 10.10.10.10 8848 1 false true false FUN-A-MDP istio-test10 map[] 0 0 0 }
+2023/11/03 10:23:37 instance=&{ 10.10.10.8 8848 1 false true false FUN-A-MDP istio-test8 map[] 0 0 0 }
+2023/11/03 10:23:37 instance=&{ 10.10.10.9 8848 1 false true false FUN-A-MDP istio-test9 map[] 0 0 0 }
