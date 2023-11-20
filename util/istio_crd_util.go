@@ -15,7 +15,8 @@ import (
 
 const VALID_DEFAULT_GROUP_NAME = "DEFAULT-GROUP"
 
-func BuildServiceNameForServiceEntry(serviceDetail *nacosResource.ServiceClusterInstanceDetail, clusterName string, namespace string) string {
+// OldBuildServiceNameForServiceEntry 2023.11.16 17:32 废弃
+func OldBuildServiceNameForServiceEntry(serviceDetail *nacosResource.ServiceClusterInstanceDetail, clusterName string, namespace string) string {
 	var group string
 	if constant.DEFAULT_GROUP != serviceDetail.GroupName {
 		group = serviceDetail.GroupName
@@ -23,6 +24,16 @@ func BuildServiceNameForServiceEntry(serviceDetail *nacosResource.ServiceCluster
 		group = VALID_DEFAULT_GROUP_NAME
 	}
 	return serviceDetail.ServiceName + "." + clusterName + "." + group + "." + namespace
+}
+
+func NewBuildServiceNameForServiceEntry(serviceDetail *nacosResource.NacosService, clusterName string, namespace string) string {
+	var group string
+	if constant.DEFAULT_GROUP != serviceDetail.GroupName {
+		group = serviceDetail.GroupName
+	} else {
+		group = VALID_DEFAULT_GROUP_NAME
+	}
+	return serviceDetail.Name + "." + clusterName + "." + group + "." + namespace
 }
 
 func BuildServiceEntry(svcName string, domainSuffix string, istioService *model.IstioService) *model.ServiceEntryWrapper {
@@ -54,8 +65,8 @@ func BuildServiceEntry(svcName string, domainSuffix string, istioService *model.
 		if metaHostname != "" {
 			hostname = metaHostname
 		}
-
-		if !instance.Healthy || !instance.Enabled {
+		// instance.Healthy 调整为 instance.valid ，兼容
+		if !instance.Valid || !instance.Enabled {
 			continue
 		}
 

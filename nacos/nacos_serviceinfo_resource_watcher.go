@@ -16,7 +16,7 @@ import (
 )
 
 var (
-	NacosAddr = flag.String("nacosAddr", "127.0.0.1:8848", "Address of the nacos server")
+	nacosAddr = flag.String("nacosAddr", "127.0.0.1:8848", "Address of the nacos server")
 )
 
 type NacosServiceInfoResourceWatcher struct {
@@ -25,6 +25,7 @@ type NacosServiceInfoResourceWatcher struct {
 	callbacks      []func()
 	watcherTicker  *time.Ticker
 	eventAdapter   adapter.ResourceWatcherAdapter
+	mutex          sync.Mutex
 }
 
 func NewNacosServiceInfoResourceWatcher(eventAdapter adapter.ResourceWatcherAdapter) (*NacosServiceInfoResourceWatcher, *time.Ticker) {
@@ -36,20 +37,23 @@ func NewNacosServiceInfoResourceWatcher(eventAdapter adapter.ResourceWatcherAdap
 	}
 	flag.Parse()
 	watcher.SubscribeAllServices(func() {
-		var changed = false
+		var changed = true
 		// 查询所有服务实例，是否有变更
-		namespaces, err := GetAllNamespaces(*NacosAddr)
+		log.Printf("nacosAddr=%v", *nacosAddr)
+		namespaces, err := GetAllNamespaces(*nacosAddr)
 		if err != nil {
+			log.Println(err)
 			return
 		}
 		for _, namespace := range namespaces {
 			if namespace == "" {
 				namespace = "public"
 			}
-			param := &nceModel.GetAllServiceInfoParam{NameSpace: namespace}
-			serviceClusterInstanceData, err := GetAllServicesWithInstanceByNamespace(*NacosAddr, param)
+			param := &nceModel.QueryAllServiceInfoParam{NamespaceId: namespace}
+			serviceClusterInstanceData, err := GetAllServicesWithInstanceByNamespace(*nacosAddr, param)
 			if err != nil {
-				return
+				log.Println(err)
+				continue
 			}
 			instances := make([]*nacosResource.NacosInstance, 0, 10)
 			for _, serviceClusterInstanceDetail := range serviceClusterInstanceData {
@@ -61,15 +65,14 @@ func NewNacosServiceInfoResourceWatcher(eventAdapter adapter.ResourceWatcherAdap
 					if clusterMapDetail.Hosts == nil {
 						continue
 					}
-					serviceName = util.BuildServiceNameForServiceEntry(serviceClusterInstanceDetail, clusterName, namespace)
-					if serviceName == "istio-test10.FUN-A-MDP.DEFAULT-GROUP.public" {
-						changed = true
-					}
+					serviceName = util.OldBuildServiceNameForServiceEntry(serviceClusterInstanceDetail, clusterName, namespace)
+					//if serviceName == "istio-test1.DEFAULT.DEFAULT-GROUP.public" {
+					//	changed = true
+					//}
 					for _, host := range clusterMapDetail.Hosts {
 						host.ClusterName = clusterName
 						host.ServiceName = serviceClusterInstanceDetail.ServiceName
 						instances = append(instances, host)
-
 					}
 				}
 				istioService := &model.IstioService{Name: serviceClusterInstanceDetail.ServiceName,
@@ -78,6 +81,78 @@ func NewNacosServiceInfoResourceWatcher(eventAdapter adapter.ResourceWatcherAdap
 					Hosts:     instances,
 				}
 				watcher.serviceInfoMap.Store(serviceName, istioService)
+			}
+		}
+
+		// TODO 变更判断，更新serviceInfoMap
+
+		// 变更通知
+		if changed {
+			watcher.eventAdapter.Notify(event.SERVICE_UPDATE_EVENT)
+		}
+	})
+
+	return watcher, watcher.watcherTicker
+}
+
+func NewNacosServiceInfoResourceWatcherNew(eventAdapter adapter.ResourceWatcherAdapter) (*NacosServiceInfoResourceWatcher, *time.Ticker) {
+	watcher := &NacosServiceInfoResourceWatcher{
+		serviceInfoMap: sync.Map{},
+		callbacks:      []func(){},
+		watcherTicker:  time.NewTicker(3 * time.Second),
+		eventAdapter:   eventAdapter,
+	}
+	flag.Parse()
+	watcher.SubscribeAllServices(func() {
+		var changed = true
+		// 查询所有服务实例，是否有变更
+		log.Printf("nacosAddr=%v", *nacosAddr)
+		namespaces, err := GetAllNamespaces(*nacosAddr)
+		if err != nil {
+			log.Println(err)
+			return
+		}
+		for _, namespace := range namespaces {
+			if namespace == "" {
+				namespace = "public"
+			}
+			param := &nceModel.QueryAllServiceInfoParam{NamespaceId: namespace}
+			ServiceListData, err := GetAllServicesByNamespace(*nacosAddr, param)
+			if err != nil {
+				log.Println(err)
+				return
+			}
+			if len(ServiceListData) == 0 {
+				continue
+			}
+			for _, serviceDetail := range ServiceListData {
+				var serviceName string
+				serviceParam := &nceModel.QueryAllInstanceInfoByServiceParam{NamespaceId: namespace, ServiceName: serviceDetail.Name}
+				instanceListData, err := GetAllInstancesByService(*nacosAddr, serviceParam)
+				if err != nil {
+					log.Print(err)
+					continue
+				}
+				if len(instanceListData.Hosts) == 0 {
+					//TODO 仅构造ServiceEntry
+					continue
+				}
+				for _, instanceDetail := range instanceListData.Hosts {
+					serviceName = util.NewBuildServiceNameForServiceEntry(serviceDetail, instanceDetail.ClusterName, namespace)
+					if value, exist := watcher.serviceInfoMap.Load(serviceName); exist {
+						istioService := value.(*model.IstioService)
+						istioService.Hosts = append(istioService.Hosts, instanceDetail)
+					} else {
+						instances := make([]*nacosResource.NacosInstance, 0, 10)
+						istioService := &model.IstioService{Name: serviceDetail.Name,
+							Namespace: namespace,
+							GroupName: serviceDetail.GroupName,
+							Hosts:     append(instances, instanceDetail),
+						}
+						watcher.serviceInfoMap.Store(serviceName, istioService)
+					}
+				}
+
 			}
 		}
 
@@ -112,6 +187,7 @@ func (w *NacosServiceInfoResourceWatcher) SubscribeAllServices(SubscribeCallback
 
 func (w *NacosServiceInfoResourceWatcher) Snapshot() map[string]*model.IstioService {
 	cloneMap := make(map[string]*model.IstioService)
+	w.mutex.Lock()
 	w.serviceInfoMap.Range(func(key, value interface{}) bool {
 		value = value.(*model.IstioService)
 		data, err := json.Marshal(value)
@@ -126,7 +202,10 @@ func (w *NacosServiceInfoResourceWatcher) Snapshot() map[string]*model.IstioServ
 			return false
 		}
 		cloneMap[key.(string)] = cloneValue
+		// add by 2023.11.16 17:26 针对新的Nacos数据获取接口方案的清理，用于实验，克隆完之后进行清理，如果后续需要支持增量订阅nacos变更数据，那么不能清理
+		//w.serviceInfoMap.Delete(key)
 		return true
 	})
+	defer w.mutex.Unlock()
 	return cloneMap
 }

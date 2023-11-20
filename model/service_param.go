@@ -1,9 +1,17 @@
 package model
 
-type GetAllServiceInfoParam struct {
-	NameSpace     string
+type QueryAllServiceInfoParam struct {
+	NamespaceId   string
 	GroupName     string
+	WithInstances bool
 	PageNo        uint32
 	PageSize      uint32
-	WithInstances bool
+}
+
+type QueryAllInstanceInfoByServiceParam struct {
+	ServiceName string
+	GroupName   string
+	NamespaceId string
+	Clusters    string
+	HealthyOnly bool
 }
