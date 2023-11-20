@@ -1,5 +1,19 @@
 package nacosResource
 
+// ServiceInstanceList 针对2023.11.16获取nacos数据的接口调整新方案新增，评估中
+type ServiceInstanceList struct {
+	Name                     string           `json:"name"`
+	GroupName                string           `json:"groupName"`
+	Clusters                 string           `json:"clusters"`
+	CacheMillis              int              `json:"cacheMillis"`
+	Hosts                    []*NacosInstance `json:"hosts"`
+	LastRefTime              int64            `json:"lastRefTime"`
+	Checksum                 string           `json:"checksum"`
+	AllIPs                   bool             `json:"allIPs"`
+	ReachProtectionThreshold bool             `json:"reachProtectionThreshold"`
+	Valid                    bool             `json:"valid"`
+}
+
 type ServiceClusterInstanceDetail struct {
 	Namespace        string                      `json:"namespace"`
 	ServiceName      string                      `json:"serviceName"`
@@ -48,6 +62,7 @@ type NacosInstance struct {
 	Ip          string  `json:"ip"`
 	Port        uint32  `json:"port"`
 	Weight      float32 `json:"weight"`
+	Valid       bool    `json:"valid"`
 	Healthy     bool    `json:"healthy"`
 	Enabled     bool    `json:"enabled"`
 	Ephemeral   bool    `json:"ephemeral"`

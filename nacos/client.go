@@ -2,7 +2,6 @@ package nacos
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"github.com/nacos-group/nacos-sdk-go/clients"
 	"github.com/nacos-group/nacos-sdk-go/clients/naming_client"
@@ -262,7 +261,7 @@ func main1() {
 	time.Sleep(10 * time.Second)
 
 	//GeAllService will get the list of service name
-	//NameSpace default value is public.If the client set the namespaceId, NameSpace will use it.
+	//NamespaceId default value is public.If the client set the namespaceId, NamespaceId will use it.
 	//GroupName default value is DEFAULT_GROUP
 	ExampleServiceClient_GetAllService(client, vo.GetAllServiceInfoParam{
 		PageNo:   1,
@@ -332,7 +331,8 @@ func HttpGetNacosData(nacosUrl string) (nacosData []byte, err error) {
 	nacosData, err = io.ReadAll(resp.Body)
 
 	if err != nil {
-		return nil, errors.New("拉取nacos数据失败")
+		log.Printf("拉取nacos数据失败,nacosUrl=%s", nacosUrl)
+		return nil, err
 	}
 	return nacosData, nil
 }
@@ -342,9 +342,8 @@ func GetAllNamespaces(nacosUrl string) ([]string, error) {
 	namespacestruct := &nacosDataProcess.NameSpaceMetadata{}
 
 	nsmetadata, err := HttpGetNacosData(namespaceUrl)
-	fmt.Printf("nsmetadata:%T\n", nsmetadata)
 	if err != nil {
-		log.Printf("获取namespaces列表失败，提示:%s", err)
+		log.Printf("获取namespaces列表失败，namespaceUrl=%s", namespaceUrl)
 		return nil, err
 	}
 
@@ -352,7 +351,7 @@ func GetAllNamespaces(nacosUrl string) ([]string, error) {
 	err = json.Unmarshal(nsmetadata, namespacestruct)
 
 	if err != nil {
-		log.Printf("数据类型转化失败错误为：%v", err)
+		log.Printf("数据类型转化失败, nsmetadata为：%v", nsmetadata)
 		return nil, err
 	}
 	var namespaces []string
@@ -362,48 +361,70 @@ func GetAllNamespaces(nacosUrl string) ([]string, error) {
 	return namespaces, nil
 }
 
-func GetAllServicesByNamespace(nacosUrl string, param *nceModel.GetAllServiceInfoParam) ([]*nacosResource.NacosService, error) {
+func GetAllServicesByNamespace(nacosUrl string, param *nceModel.QueryAllServiceInfoParam) ([]*nacosResource.NacosService, error) {
 	//nacosUrl := serverConfig.IpAddr + ":" + string(serverConfig.Port)
-	ServiceUrl := "http://" + nacosUrl + "/nacos/v1/ns/catalog/services?hasIpCount=true&withInstances=false&pageNo=1&pageSize=10&serviceNameParam=&groupNameParam=&namespaceId=" + param.NameSpace
+	ServiceUrl := "http://" + nacosUrl + "/nacos/v1/ns/catalog/services?hasIpCount=true&withInstances=false&pageNo=1&pageSize=10&serviceNameParam=&groupNameParam=&namespaceId=" + param.NamespaceId
 
 	//获取service实例信息
 	serviceMedata, err := HttpGetNacosData(ServiceUrl)
 	if err != nil {
-		return nil, errors.New("serviceMetadata 获取失败")
+		log.Printf("serviceMedata 获取失败,ServiceUrl=%s", ServiceUrl)
+		return nil, err
 	}
 	ServiceData := &nacosDataProcess.ServiceMetadata{}
 
 	err = json.Unmarshal(serviceMedata, ServiceData)
 
 	if err != nil {
-		log.Printf("命名空间下的service数据获取失败,错误为：%v", err)
-		return nil, errors.New("命名空间下的service数据获取失败,错误为 " + err.Error())
+		log.Printf("命名空间下的service数据获取失败,serviceMedata为：%v", serviceMedata)
+		return nil, err
 	}
 	return ServiceData.ServiceList, nil
 }
 
-func GetAllServicesWithInstanceByNamespace(nacosUrl string, param *nceModel.GetAllServiceInfoParam) ([]*nacosResource.ServiceClusterInstanceDetail, error) {
+func GetAllServicesWithInstanceByNamespace(nacosUrl string, param *nceModel.QueryAllServiceInfoParam) ([]*nacosResource.ServiceClusterInstanceDetail, error) {
 	//nacosUrl := serverConfig.IpAddr + ":" + string(serverConfig.Port)
-	ServiceUrl := "http://" + nacosUrl + "/nacos/v1/ns/catalog/services?hasIpCount=true&withInstances=true&pageNo=1&pageSize=10&serviceNameParam=&groupNameParam=&namespaceId=" + param.NameSpace
+	ServiceUrl := "http://" + nacosUrl + "/nacos/v1/ns/catalog/services?hasIpCount=true&withInstances=true&pageNo=1&pageSize=10&serviceNameParam=&groupNameParam=&namespaceId=" + param.NamespaceId
 
 	//获取service实例信息
 	serviceClusterInstanceMedata, err := HttpGetNacosData(ServiceUrl)
 	if err != nil {
 		log.Printf("serviceClusterInstanceMedata 获取失败,ServiceUrl=%s", ServiceUrl)
-		panic(err)
-		//return nil, errors.New("serviceClusterInstanceMedata 获取失败")
+		//panic(err)
+		return nil, err
 	}
 	var ServiceClusterInstanceData []*nacosResource.ServiceClusterInstanceDetail
 
 	err = json.Unmarshal(serviceClusterInstanceMedata, &ServiceClusterInstanceData)
 
 	if err != nil {
-		log.Printf("命名空间下的service数据获取失败,错误为：%v", err)
-		panic(err)
-		//return nil, err
+		log.Printf("命名空间下的service数据获取失败,接口参数为：%v, 错误内容为：%v", param, err)
+		//panic(err)
+		return nil, err
 	}
 
 	return ServiceClusterInstanceData, nil
+}
+
+func GetAllInstancesByService(nacosUrl string, param *nceModel.QueryAllInstanceInfoByServiceParam) (*nacosResource.ServiceInstanceList, error) {
+	InstancesListUrl := "http://" + nacosUrl + "/nacos/v1/ns/instance/list?namespaceId=" + param.NamespaceId + "&serviceName=" + param.ServiceName
+
+	//获取service实例信息
+	serviceInstanceListMeta, err := HttpGetNacosData(InstancesListUrl)
+	if err != nil {
+		log.Printf("serviceInstanceListMeta 获取失败,ServiceUrl=%s", InstancesListUrl)
+		return nil, err
+	}
+	var ServiceInstanceListData *nacosResource.ServiceInstanceList
+
+	err = json.Unmarshal(serviceInstanceListMeta, &ServiceInstanceListData)
+
+	if err != nil {
+		log.Printf("服务下的service数据获取失败,接口参数为：%v", param)
+		return nil, err
+	}
+
+	return ServiceInstanceListData, nil
 }
 
 func GetNamespaceCheckSum(namespace string) string {

@@ -119,7 +119,7 @@ func testGetNacosData() {
 	}
 
 	// 测试获取nacos指定ns下的所有instance
-	param := &nceModel.GetAllServiceInfoParam{NameSpace: "public"}
+	param := &nceModel.QueryAllServiceInfoParam{NamespaceId: "public"}
 	instances, err := nacos.GetAllServicesWithInstanceByNamespace(nacosUrl, param)
 	if err != nil {
 		log.Print(err)
