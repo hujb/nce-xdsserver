@@ -1,6 +1,8 @@
 package constant
 
 const (
+	VIRTUAL_SERVICE_TYPE = "networking.istio.io/v1alpha3/VirtualService"
+
 	SERVICE_ENTRY_PROTO_PACKAGE = "networking.istio.io/v1alpha3/ServiceEntry"
 	//SERVICE_ENTRY_TYPE          = "networking.istio.io/v1alpha3/ServiceEntry"
 

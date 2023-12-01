@@ -15,7 +15,7 @@ var singletonServiceEntryXdsGenerator *ServiceEntryXdsGenerator
 
 var once sync.Once
 
-func GetInstance() *ServiceEntryXdsGenerator {
+func GetServiceEntryXdsGeneratorInstance() *ServiceEntryXdsGenerator {
 	once.Do(func() {
 		singletonServiceEntryXdsGenerator = &ServiceEntryXdsGenerator{}
 	})

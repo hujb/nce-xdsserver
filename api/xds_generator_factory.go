@@ -16,7 +16,7 @@ var once sync.Once
 func GetInstance() *XdsGeneratorFactory {
 	once.Do(func() {
 		_generatorMap := make(map[string]XdsGenerator)
-		_generatorMap[constant.SERVICE_ENTRY_PROTO_PACKAGE] = generator.GetInstance()
+		_generatorMap[constant.SERVICE_ENTRY_PROTO_PACKAGE] = generator.GetServiceEntryXdsGeneratorInstance()
 		// TODO Support other type generator
 		singletonXdsGeneratorFactory = &XdsGeneratorFactory{generatorMap: _generatorMap}
 	})

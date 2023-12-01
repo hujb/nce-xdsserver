@@ -31,7 +31,7 @@ func (e *EventProcessor) HandleEvents() {
 			rs := resource.GetResourceManagerInstance().CreateResourceSnapshot()
 			//e.nacosXdsService.HandChangedEvent(rs)
 			e.nacosXdsService.HandleEvent(rs)
-			fmt.Println("收到nacos服务变更通知，下发推送任务执行了！")
+			fmt.Println("收到nacos服务变更通知，下发推送任务执行完成！")
 		}
 	}
 }

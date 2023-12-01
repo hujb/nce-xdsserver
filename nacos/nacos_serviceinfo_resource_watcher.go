@@ -177,7 +177,7 @@ func (w *NacosServiceInfoResourceWatcher) ExecuteTimerTask() {
 			callback()
 		}
 
-		fmt.Println("定时查询Nacos服务信息任务执行了！")
+		fmt.Println("定时查询Nacos服务信息任务执行完成！")
 	}
 }
 
