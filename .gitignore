@@ -1,2 +1,5 @@
 bin/
-log/
+log/glog
+log/logrus
+log/stdlog
+log/zap
