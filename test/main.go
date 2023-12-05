@@ -1,7 +1,9 @@
 package main
 
 import (
+	"context"
 	"errors"
+	"flag"
 	"fmt"
 	"github.com/nce/nce-xdsserver/common/event/process"
 	r "github.com/nce/nce-xdsserver/common/resource"
@@ -10,8 +12,15 @@ import (
 	"github.com/nce/nce-xdsserver/nacos"
 	"github.com/nce/nce-xdsserver/xds"
 	"go.uber.org/zap"
+	"istio.io/api/meta/v1alpha1"
+	networkingv1alpha3 "istio.io/api/networking/v1alpha3"
+	v1alpha3 "istio.io/client-go/pkg/apis/networking/v1alpha3"
+	istio "istio.io/client-go/pkg/clientset/versioned"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/tools/clientcmd"
 	"log"
 	"os"
+	"strings"
 	"sync"
 	"time"
 )
@@ -19,8 +28,78 @@ import (
 func main() {
 
 	//zapLogTest()
-	testGoLog()
+	//testGoLog()
+	//testVirtualService()
+	testStringsBuilder()
+}
 
+func testStringsBuilder() {
+	var builder strings.Builder
+	builder.WriteString("Hello")
+	builder.WriteString(" ")
+	builder.WriteString("World!")
+	result := builder.String()
+	fmt.Println(result) // 输出: Hello World!
+
+}
+
+func testVirtualService() {
+	// 获取kubeconfig文件路径
+	kubeconfig := flag.String("kubeconfig", "/Users/hujiebin/source/istio/kubeconfig1", "absolute path to the kubeconfig file")
+	flag.Parse()
+	// 创建Kubernetes和Istio的客户端集
+	config, err := clientcmd.BuildConfigFromFlags("", *kubeconfig)
+	if err != nil {
+		panic(err.Error())
+	}
+	//kubernetesClient, err := kubernetes.NewForConfig(config)
+	//if err != nil {
+	//	panic(err.Error())
+	//}
+	istioClient, err := istio.NewForConfig(config)
+	if err != nil {
+		fmt.Println(err.Error())
+		//panic(err.Error())
+	}
+
+	// 创建VirtualService对象
+	httpRoutes := make([]*networkingv1alpha3.HTTPRoute, 0)
+	httpRoute := &networkingv1alpha3.HTTPRoute{
+		Match: []*networkingv1alpha3.HTTPMatchRequest{
+			{
+				Uri: &networkingv1alpha3.StringMatch{
+					MatchType: &networkingv1alpha3.StringMatch_Prefix{
+						Prefix: "/",
+					},
+				},
+			},
+		},
+		Route: []*networkingv1alpha3.HTTPRouteDestination{
+			{
+				Destination: &networkingv1alpha3.Destination{
+					Host: "reviews",
+					Port: &networkingv1alpha3.PortSelector{
+						Number: 9091,
+					},
+				},
+			},
+		},
+	}
+	httpRoutes = append(httpRoutes, httpRoute)
+	virtualService := &v1alpha3.VirtualService{
+		TypeMeta:   v1.TypeMeta{},
+		ObjectMeta: v1.ObjectMeta{Name: "my-virtual-service"},
+		Spec: networkingv1alpha3.VirtualService{Hosts: []string{"my-virtual-service"},
+			Http: httpRoutes, ExportTo: []string{"*"}},
+		Status: v1alpha1.IstioStatus{},
+	}
+
+	// 应用VirtualService到Kubernetes集群
+	createdVirtualService, err := istioClient.NetworkingV1alpha3().VirtualServices("default").Create(context.TODO(), virtualService, v1.CreateOptions{})
+	if err != nil {
+		panic(err.Error())
+	}
+	fmt.Printf("Created VirtualService: %s\n", createdVirtualService.ObjectMeta.Name)
 }
 
 func testGoLog() {

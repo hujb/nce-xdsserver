@@ -9,12 +9,12 @@ import (
 	"github.com/nacos-group/nacos-sdk-go/model"
 	"github.com/nacos-group/nacos-sdk-go/util"
 	"github.com/nacos-group/nacos-sdk-go/vo"
+	"github.com/nce/nce-xdsserver/log"
 	nceModel "github.com/nce/nce-xdsserver/model"
 	"github.com/nce/nce-xdsserver/nacos/nacosDataProcess"
 	"github.com/nce/nce-xdsserver/nacos/nacosResource"
 	"gopkg.in/natefinch/lumberjack.v2"
 	"io"
-	"log"
 	"net/http"
 	"time"
 )
@@ -323,7 +323,7 @@ func HttpGetNacosData(nacosUrl string) (nacosData []byte, err error) {
 	resp, err := http.Get(nacosUrl)
 
 	if err != nil {
-		fmt.Println(err)
+		log.Logger.Error(err.Error())
 		return nil, err
 	}
 
@@ -331,7 +331,8 @@ func HttpGetNacosData(nacosUrl string) (nacosData []byte, err error) {
 	nacosData, err = io.ReadAll(resp.Body)
 
 	if err != nil {
-		log.Printf("拉取nacos数据失败,nacosUrl=%s", nacosUrl)
+		//log.Printf("拉取nacos数据失败,nacosUrl=%s", nacosUrl)
+		log.Logger.Error("拉取nacos数据失败,nacosUrl=" + nacosUrl)
 		return nil, err
 	}
 	return nacosData, nil
@@ -343,7 +344,8 @@ func GetAllNamespaces(nacosUrl string) ([]string, error) {
 
 	nsmetadata, err := HttpGetNacosData(namespaceUrl)
 	if err != nil {
-		log.Printf("获取namespaces列表失败，namespaceUrl=%s", namespaceUrl)
+		//log.Printf("获取namespaces列表失败，namespaceUrl=%s", namespaceUrl)
+		log.Logger.Error("获取namespaces列表失败，namespaceUrl=" + namespaceUrl)
 		return nil, err
 	}
 
@@ -351,7 +353,9 @@ func GetAllNamespaces(nacosUrl string) ([]string, error) {
 	err = json.Unmarshal(nsmetadata, namespacestruct)
 
 	if err != nil {
-		log.Printf("数据类型转化失败, nsmetadata为：%v", nsmetadata)
+		//log.Printf("数据类型转化失败, nsmetadata为：%v", nsmetadata)
+		// TODO 关注[]byte转string是否为预期结果
+		log.Logger.Error("数据类型转化失败, nsmetadata为：" + string(nsmetadata))
 		return nil, err
 	}
 	var namespaces []string
@@ -368,7 +372,7 @@ func GetAllServicesByNamespace(nacosUrl string, param *nceModel.QueryAllServiceI
 	//获取service实例信息
 	serviceMedata, err := HttpGetNacosData(ServiceUrl)
 	if err != nil {
-		log.Printf("serviceMedata 获取失败,ServiceUrl=%s", ServiceUrl)
+		log.Logger.Error("serviceMedata 获取失败,ServiceUrl=" + ServiceUrl)
 		return nil, err
 	}
 	ServiceData := &nacosDataProcess.ServiceMetadata{}
@@ -376,7 +380,9 @@ func GetAllServicesByNamespace(nacosUrl string, param *nceModel.QueryAllServiceI
 	err = json.Unmarshal(serviceMedata, ServiceData)
 
 	if err != nil {
-		log.Printf("命名空间下的service数据获取失败,serviceMedata为：%v", serviceMedata)
+		//log.Printf("命名空间下的service数据获取失败,serviceMedata为：%v", serviceMedata)
+		// TODO 关注[]byte转string是否为预期结果
+		log.Logger.Error("命名空间下的service数据获取失败,serviceMedata为：" + string(serviceMedata))
 		return nil, err
 	}
 	return ServiceData.ServiceList, nil
@@ -389,7 +395,7 @@ func GetAllServicesWithInstanceByNamespace(nacosUrl string, param *nceModel.Quer
 	//获取service实例信息
 	serviceClusterInstanceMedata, err := HttpGetNacosData(ServiceUrl)
 	if err != nil {
-		log.Printf("serviceClusterInstanceMedata 获取失败,ServiceUrl=%s", ServiceUrl)
+		log.Logger.Error("serviceClusterInstanceMedata 获取失败,ServiceUrl=" + ServiceUrl)
 		//panic(err)
 		return nil, err
 	}
@@ -398,7 +404,8 @@ func GetAllServicesWithInstanceByNamespace(nacosUrl string, param *nceModel.Quer
 	err = json.Unmarshal(serviceClusterInstanceMedata, &ServiceClusterInstanceData)
 
 	if err != nil {
-		log.Printf("命名空间下的service数据获取失败,接口参数为：%v, 错误内容为：%v", param, err)
+		//log.Printf("命名空间下的service数据获取失败,接口参数为：%v, 错误内容为：%v", param, err)
+		log.Logger.Error("命名空间下的service数据获取失败,接口参数为：" + param.String() + ", 错误内容为：" + err.Error())
 		//panic(err)
 		return nil, err
 	}
@@ -412,7 +419,7 @@ func GetAllInstancesByService(nacosUrl string, param *nceModel.QueryAllInstanceI
 	//获取service实例信息
 	serviceInstanceListMeta, err := HttpGetNacosData(InstancesListUrl)
 	if err != nil {
-		log.Printf("serviceInstanceListMeta 获取失败,ServiceUrl=%s", InstancesListUrl)
+		log.Logger.Error("serviceInstanceListMeta 获取失败,ServiceUrl=" + InstancesListUrl)
 		return nil, err
 	}
 	var ServiceInstanceListData *nacosResource.ServiceInstanceList
@@ -420,7 +427,8 @@ func GetAllInstancesByService(nacosUrl string, param *nceModel.QueryAllInstanceI
 	err = json.Unmarshal(serviceInstanceListMeta, &ServiceInstanceListData)
 
 	if err != nil {
-		log.Printf("服务下的service数据获取失败,接口参数为：%v", param)
+		//log.Printf("服务下的service数据获取失败,接口参数为：%v", param)
+		log.Logger.Error("服务下的service数据获取失败,接口参数为：" + param.String())
 		return nil, err
 	}
 

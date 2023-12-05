@@ -2,15 +2,16 @@ package nacos
 
 import (
 	"flag"
-	"fmt"
 	"github.com/nce/nce-xdsserver/common/adapter"
 	"github.com/nce/nce-xdsserver/common/event"
+	"github.com/nce/nce-xdsserver/log"
 	"github.com/nce/nce-xdsserver/model"
 	nceModel "github.com/nce/nce-xdsserver/model"
 	"github.com/nce/nce-xdsserver/nacos/nacosResource"
 	"github.com/nce/nce-xdsserver/util"
+	"go.uber.org/zap"
 	"k8s.io/apimachinery/pkg/util/json"
-	"log"
+	//"log"
 	"sync"
 	"time"
 )
@@ -39,10 +40,12 @@ func NewNacosServiceInfoResourceWatcher(eventAdapter adapter.ResourceWatcherAdap
 	watcher.SubscribeAllServices(func() {
 		var changed = true
 		// 查询所有服务实例，是否有变更
-		log.Printf("nacosAddr=%v", *nacosAddr)
+		//log.Printf("nacosAddr=%v", *nacosAddr)
+		log.Logger.Info("nacosAddr=" + *nacosAddr)
 		namespaces, err := GetAllNamespaces(*nacosAddr)
 		if err != nil {
-			log.Println(err)
+			//log.Println(err)
+			log.Logger.Error(err.Error())
 			return
 		}
 		for _, namespace := range namespaces {
@@ -52,7 +55,8 @@ func NewNacosServiceInfoResourceWatcher(eventAdapter adapter.ResourceWatcherAdap
 			param := &nceModel.QueryAllServiceInfoParam{NamespaceId: namespace}
 			serviceClusterInstanceData, err := GetAllServicesWithInstanceByNamespace(*nacosAddr, param)
 			if err != nil {
-				log.Println(err)
+				//log.Println(err)
+				log.Logger.Error(err.Error())
 				continue
 			}
 			instances := make([]*nacosResource.NacosInstance, 0, 10)
@@ -106,10 +110,13 @@ func NewNacosServiceInfoResourceWatcherNew(eventAdapter adapter.ResourceWatcherA
 	watcher.SubscribeAllServices(func() {
 		var changed = true
 		// 查询所有服务实例，是否有变更
-		log.Printf("nacosAddr=%v", *nacosAddr)
+		//log.Printf("nacosAddr=%v", *nacosAddr)
+		log.Logger.Info("nacosAddr=" + *nacosAddr)
+
 		namespaces, err := GetAllNamespaces(*nacosAddr)
 		if err != nil {
-			log.Println(err)
+			//log.Println(err)
+			log.Logger.Error(err.Error())
 			return
 		}
 		for _, namespace := range namespaces {
@@ -119,7 +126,8 @@ func NewNacosServiceInfoResourceWatcherNew(eventAdapter adapter.ResourceWatcherA
 			param := &nceModel.QueryAllServiceInfoParam{NamespaceId: namespace}
 			ServiceListData, err := GetAllServicesByNamespace(*nacosAddr, param)
 			if err != nil {
-				log.Println(err)
+				//log.Println(err)
+				log.Logger.Error(err.Error())
 				return
 			}
 			if len(ServiceListData) == 0 {
@@ -130,7 +138,8 @@ func NewNacosServiceInfoResourceWatcherNew(eventAdapter adapter.ResourceWatcherA
 				serviceParam := &nceModel.QueryAllInstanceInfoByServiceParam{NamespaceId: namespace, ServiceName: serviceDetail.Name}
 				instanceListData, err := GetAllInstancesByService(*nacosAddr, serviceParam)
 				if err != nil {
-					log.Print(err)
+					//log.Print(err)
+					log.Logger.Error(err.Error())
 					continue
 				}
 				if len(instanceListData.Hosts) == 0 {
@@ -177,7 +186,8 @@ func (w *NacosServiceInfoResourceWatcher) ExecuteTimerTask() {
 			callback()
 		}
 
-		fmt.Println("定时查询Nacos服务信息任务执行完成！")
+		//fmt.Println("定时查询Nacos服务信息任务执行完成！")
+		log.Logger.Info("定时查询Nacos服务信息任务执行完成！")
 	}
 }
 
@@ -192,13 +202,15 @@ func (w *NacosServiceInfoResourceWatcher) Snapshot() map[string]*model.IstioServ
 		value = value.(*model.IstioService)
 		data, err := json.Marshal(value)
 		if err != nil {
-			log.Fatalf("深度拷贝序列化异常，value: %v, err: %v", value, err)
+			//log.Fatalf("深度拷贝序列化异常，value: %v, err: %v", value, err)
+			log.Logger.Fatal("深度拷贝序列化异常，", zap.Any("value", value), zap.Any("err", err))
 			return false
 		}
 		cloneValue := &model.IstioService{}
 		err = json.Unmarshal(data, cloneValue)
 		if err != nil {
-			log.Fatalf("深度拷贝反序列化异常，value: %v, err: %v", value, err)
+			//log.Fatalf("深度拷贝反序列化异常，value: %v, err: %v", value, err)
+			log.Logger.Fatal("深度拷贝反序列化异常", zap.Any("value", value), zap.Any("err", err))
 			return false
 		}
 		cloneMap[key.(string)] = cloneValue

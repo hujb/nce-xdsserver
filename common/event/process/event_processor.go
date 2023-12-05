@@ -1,9 +1,9 @@
 package process
 
 import (
-	"fmt"
 	"github.com/nce/nce-xdsserver/common/event"
 	"github.com/nce/nce-xdsserver/common/resource"
+	"github.com/nce/nce-xdsserver/log"
 	"github.com/nce/nce-xdsserver/xds"
 )
 
@@ -31,7 +31,8 @@ func (e *EventProcessor) HandleEvents() {
 			rs := resource.GetResourceManagerInstance().CreateResourceSnapshot()
 			//e.nacosXdsService.HandChangedEvent(rs)
 			e.nacosXdsService.HandleEvent(rs)
-			fmt.Println("收到nacos服务变更通知，下发推送任务执行完成！")
+			//fmt.Println("收到nacos服务变更通知，下发推送任务执行完成！")
+			log.Logger.Info("收到nacos服务变更通知，下发推送任务执行完成！")
 		}
 	}
 }

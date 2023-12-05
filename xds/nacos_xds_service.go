@@ -8,6 +8,7 @@ import (
 	"github.com/nce/nce-xdsserver/api"
 	"github.com/nce/nce-xdsserver/common/constant"
 	"github.com/nce/nce-xdsserver/common/resource"
+	"github.com/nce/nce-xdsserver/log"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/peer"
 	"google.golang.org/grpc/status"
@@ -15,11 +16,12 @@ import (
 	"io"
 	mcp_v1alpha1 "istio.io/api/mcp/v1alpha1"
 	"istio.io/api/networking/v1alpha3"
+	"strings"
+
 	//"istio.io/api/security/v1beta1"
 	security_v1beta1 "istio.io/api/security/v1beta1"
 	"istio.io/client-go/pkg/apis/security/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"log"
 	"strconv"
 	"sync"
 	"time"
@@ -52,6 +54,10 @@ type Connection struct {
 	LastRequestAcked bool
 }
 
+func (c Connection) String() string {
+	return fmt.Sprintf("ConID: %s, NodeID: %s, Active: %t", c.ConID, c.NodeID, c.active)
+}
+
 type NacosXdsService struct {
 	//pushc            chan struct{}
 	clients          map[string]*Connection
@@ -72,7 +78,7 @@ func (n *NacosXdsService) SetResourceManager(manager *resource.ResourceManager) 
 }
 
 func (n *NacosXdsService) StreamAggregatedResources(stream xds.AggregatedDiscoveryService_StreamAggregatedResourcesServer) error {
-	log.Println("process ads stream.....")
+	log.Logger.Info("process ads stream.....")
 	resource.GetResourceManagerInstance().InitResourceSnapshot()
 	con := &Connection{
 		Stream:           stream,
@@ -82,15 +88,18 @@ func (n *NacosXdsService) StreamAggregatedResources(stream xds.AggregatedDiscove
 	}
 	for {
 		request, err := stream.Recv()
-		log.Printf("request info: %v", request)
+		//log.Printf("request info: %v", request.String())
+		log.Logger.Debug("request info: " + request.String())
 		if err != nil {
 			if status.Code(err) == codes.Canceled || err == io.EOF {
-				log.Printf("ADS: %s terminated %v", con.ConID, err)
+				//log.Printf("ADS: %s terminated %v", con.ConID, err)
+				log.Logger.Warn("ADS: " + con.ConID + "terminated " + err.Error())
 				// remove this connection:
 				delete(n.clients, con.ConID)
 				return nil
 			}
-			log.Printf("ADS: %s terminated with errors %v", con.ConID, err)
+			//log.Printf("ADS: %s terminated with errors %v", con.ConID, err)
+			log.Logger.Error("ADS: " + con.ConID + " terminated with errors " + err.Error())
 			return err
 		}
 		err = n.Process(con, request, stream)
@@ -116,7 +125,7 @@ func (n *NacosXdsService) Process(con *Connection, request *xds.DiscoveryRequest
 	if !con.active {
 		var id string
 		if request.Node == nil || request.Node.Id == "" {
-			log.Println("Missing node id ", request.String())
+			log.Logger.Warn("Missing node id " + request.String())
 			id = con.PeerAddr
 		} else {
 			id = request.Node.Id
@@ -133,7 +142,8 @@ func (n *NacosXdsService) Process(con *Connection, request *xds.DiscoveryRequest
 
 		con.active = true
 
-		log.Println("activate new connection:", con)
+		//log.Println("activate new connection:", con)
+		log.Logger.Info("activate new connection:" + con.String())
 	}
 
 	if !n.shouldPush(con, request) {
@@ -141,11 +151,12 @@ func (n *NacosXdsService) Process(con *Connection, request *xds.DiscoveryRequest
 	}
 
 	if peerInfo, ok := peer.FromContext(stream.Context()); ok {
-		log.Println(peerInfo)
+		log.Logger.Debug("peerInfo.Addr: " + peerInfo.Addr.String())
 	}
 	// 2023.10.30 22:57 start
 	response := n.buildDiscoveryResponse(request.TypeUrl, n.resourceManager.GetResourceSnapshot())
-	log.Printf("DEBUG DiscoveryResponse: %v", response)
+	//log.Printf("DEBUG DiscoveryResponse: %v", response)
+	log.Logger.Debug("DiscoveryResponse: " + response.String())
 	con.NonceSent[response.TypeUrl] = response.Nonce
 	err := stream.Send(response)
 	// 2023.10.30 22:57 end
@@ -154,7 +165,8 @@ func (n *NacosXdsService) Process(con *Connection, request *xds.DiscoveryRequest
 	//err := pushPeerAuthentication(stream)  验证不同类型的资源
 	if err != nil {
 		// push failed - disconnect
-		log.Println("Closing connection ", con.ConID, err)
+		//log.Println("Closing connection ", con.ConID, err)
+		log.Logger.Error("Closing connection " + con.ConID + ", err: " + err.Error())
 		delete(n.clients, con.ConID)
 		return err
 	}
@@ -166,12 +178,17 @@ func (n *NacosXdsService) shouldPush(con *Connection, request *xds.DiscoveryRequ
 	rtype := request.TypeUrl
 
 	if rtype == constant.MESH_CONFIG_TYPE {
-		log.Printf("xds: type %s should be ignored.", rtype)
+		log.Logger.Warn("xds: type " + rtype + " should be ignored.")
 		return false
 	}
 
 	if request.ErrorDetail != nil && request.ErrorDetail.Message != "" {
-		log.Println("NACK: ", con.NodeID, rtype, request.ErrorDetail)
+		var sb strings.Builder
+		sb.WriteString("NACK: ")
+		sb.WriteString(rtype)
+		sb.WriteString(request.ErrorDetail.String())
+		//log.Println("NACK: ", con.NodeID, rtype, request.ErrorDetail)
+		log.Logger.Error(sb.String())
 		return false
 	}
 
@@ -179,7 +196,7 @@ func (n *NacosXdsService) shouldPush(con *Connection, request *xds.DiscoveryRequ
 		con.mu.Lock()
 		con.NonceAcked[rtype] = request.ResponseNonce
 		con.mu.Unlock()
-		log.Println("error", request.ErrorDetail)
+		log.Logger.Error("error: " + request.ErrorDetail.String())
 		return false
 	}
 
@@ -192,7 +209,14 @@ func (n *NacosXdsService) shouldPush(con *Connection, request *xds.DiscoveryRequ
 		if lastNonce == request.ResponseNonce {
 
 			//if rtype == SERVICE_ENTRY_TYPE {
-			log.Println("ACK of:", con.LastRequestTime, " used time(microsecond):", time.Now().UnixNano()/1000-con.LastRequestTime, "\n")
+			var sb strings.Builder
+			sb.WriteString("ACK of: ")
+			sb.WriteString(strconv.Itoa(int(con.LastRequestTime)))
+			sb.WriteString(", used time(microsecond): ")
+			sb.WriteString(strconv.Itoa(int(time.Now().UnixNano()/1000 - con.LastRequestTime)))
+			sb.WriteString("\n")
+			log.Logger.Info(sb.String())
+			//fmt.Println("ACK of:", con.LastRequestTime, " used time(microsecond): ", time.Now().UnixNano()/1000-con.LastRequestTime, "\n")
 			con.LastRequestAcked = true
 
 			con.mu.Lock()
@@ -203,7 +227,8 @@ func (n *NacosXdsService) shouldPush(con *Connection, request *xds.DiscoveryRequ
 			return false
 		} else {
 			// will resent the resource, set the nonce - next response should be ok.
-			log.Println("Unmatching nonce ", request.ResponseNonce, lastNonce)
+			//log.Println("Unmatching nonce ", request.ResponseNonce, lastNonce)
+			log.Logger.Debug("Unmatching nonce " + request.ResponseNonce + ", lastNonce: " + lastNonce)
 		}
 	}
 	return true
@@ -271,7 +296,8 @@ func pushServiceEntries(request *xds.DiscoveryRequest, con *Connection, stream x
 		Nonce:       fmt.Sprintf("%v", time.Now()),
 		Resources:   resources,
 	}
-	log.Printf("DEBUG DiscoveryResponse: %v", response)
+	//log.Printf("DEBUG DiscoveryResponse: %v", response)
+	log.Logger.Debug("DiscoveryResponse: " + response.String())
 	con.NonceSent[response.TypeUrl] = response.Nonce
 	return stream.Send(response)
 }
@@ -320,13 +346,23 @@ func (n *NacosXdsService) HandleEvent(resourceSnapshot *resource.ResourceSnapsho
 	if len(n.clients) == 0 {
 		return
 	}
-	log.Printf("xds: event changed trigger push.")
+	log.Logger.Info("xds: event changed trigger push.")
 	serviceEntryResponse := n.buildDiscoveryResponse(constant.SERVICE_ENTRY_PROTO_PACKAGE, resourceSnapshot)
-	log.Printf("连接数：%d", len(n.clients))
+	log.Logger.Info("连接数：" + strconv.Itoa(len(n.clients)))
 	for _, c := range n.clients {
-		log.Println("sending resources count:", len(serviceEntryResponse.Resources), ", size:", n.sizeOfResources(serviceEntryResponse.Resources),
-			", request time:", c.LastRequestTime, ", connection id:", c.ConID)
-		log.Printf("DEBUG event changed DiscoveryResponse: %v", serviceEntryResponse)
+		var sb strings.Builder
+		sb.WriteString("sending resources count: ")
+		sb.WriteString(strconv.Itoa(len(serviceEntryResponse.Resources)))
+		sb.WriteString(", size: ")
+		sb.WriteString(strconv.Itoa(int(n.sizeOfResources(serviceEntryResponse.Resources))))
+		sb.WriteString(", request time: ")
+		sb.WriteString(strconv.Itoa(int(c.LastRequestTime)))
+		sb.WriteString(", connection id: ")
+		sb.WriteString(c.ConID)
+		log.Logger.Debug(sb.String())
+		log.Logger.Debug("event changed DiscoveryResponse: " + serviceEntryResponse.String())
+		//fmt.Println("sending resources count:", len(serviceEntryResponse.Resources), ", size:", n.sizeOfResources(serviceEntryResponse.Resources),
+		//	", request time:", c.LastRequestTime, ", connection id:", c.ConID)
 		c.NonceSent[serviceEntryResponse.TypeUrl] = serviceEntryResponse.Nonce
 		c.Stream.Send(serviceEntryResponse)
 	}
@@ -334,7 +370,7 @@ func (n *NacosXdsService) HandleEvent(resourceSnapshot *resource.ResourceSnapsho
 }
 
 func (n *NacosXdsService) HandChangedEvent(resourceSnapshot *resource.ResourceSnapshot) {
-	log.Printf("xds: receive event changed trigger push.")
+	log.Logger.Info("xds: receive event changed trigger push.")
 	if len(n.clients) == 0 {
 		return
 	}
@@ -381,7 +417,7 @@ func (n *NacosXdsService) HandChangedEvent(resourceSnapshot *resource.ResourceSn
 		Body: a,
 	}
 	apb, _ := anypb.New(&mcpResource)
-	log.Printf("连接数：%d", len(n.clients))
+	log.Logger.Info("连接数：" + strconv.Itoa(len(n.clients)))
 	for _, c := range n.clients {
 		//if c.LastRequestAcked == false {
 		//	log.Println("Last request not finished, ignore.")
@@ -391,15 +427,25 @@ func (n *NacosXdsService) HandChangedEvent(resourceSnapshot *resource.ResourceSn
 
 		c.LastRequestTime = time.Now().UnixNano() / 1000
 		rs := []*anypb.Any{apb}
-		log.Println("sending resources count:", len(rs), ", size:", n.sizeOfResources(rs),
-			", request time:", c.LastRequestTime, ", connection id:", c.ConID)
+		var sb strings.Builder
+		sb.WriteString("sending resources count: ")
+		sb.WriteString(strconv.Itoa(len(rs)))
+		sb.WriteString(", size: ")
+		sb.WriteString(strconv.Itoa(int(n.sizeOfResources(rs))))
+		sb.WriteString(", request time: ")
+		sb.WriteString(strconv.Itoa(int(c.LastRequestTime)))
+		sb.WriteString(", connection id: ")
+		sb.WriteString(c.ConID)
+		//log.Println("sending resources count:", len(rs), ", size:", n.sizeOfResources(rs),
+		//	", request time:", c.LastRequestTime, ", connection id:", c.ConID)
 		response := &xds.DiscoveryResponse{
 			TypeUrl:     constant.SERVICE_ENTRY_TYPE,
 			VersionInfo: resourceSnapshot.GetVersion(),
 			Nonce:       fmt.Sprintf("%v", time.Now()),
 			Resources:   rs,
 		}
-		log.Printf("DEBUG event changed DiscoveryResponse: %v", response)
+		//log.Printf("DEBUG event changed DiscoveryResponse: %v", response)
+		log.Logger.Debug("event changed DiscoveryResponse: " + response.String())
 		c.NonceSent[response.TypeUrl] = response.Nonce
 		c.Stream.Send(response)
 	}
