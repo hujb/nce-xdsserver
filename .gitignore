@@ -3,3 +3,5 @@ log/glog
 log/logrus
 log/stdlog
 log/zap
+.idea/
+logs/

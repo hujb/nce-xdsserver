@@ -40,11 +40,11 @@ func InitLogger(dc string, workId string) {
 	encoder := zapcore.NewConsoleEncoder(encoderConfig)
 	//文件writeSyncer
 	fileWriteSyncer := zapcore.AddSync(&lumberjack.Logger{
-		Filename:   "./app-NceXdsServer-0300099.log", //日志文件存放目录
-		MaxSize:    1,                                //文件大小限制,单位MB
-		MaxBackups: 5,                                //最大保留日志文件数量
-		MaxAge:     30,                               //日志文件保留天数
-		Compress:   true})                            //是否压缩处理
+		Filename:   "./logs/app-NceXdsServer-0300099.log", //日志文件存放目录
+		MaxSize:    1,                                     //文件大小限制,单位MB
+		MaxBackups: 5,                                     //最大保留日志文件数量
+		MaxAge:     30,                                    //日志文件保留天数
+		Compress:   true})                                 //是否压缩处理
 	//第三个及之后的参数为写入文件的日志级别,ErrorLevel模式只记录error级别的日志
 	core := zapcore.NewCore(encoder, zapcore.NewMultiWriteSyncer(fileWriteSyncer, zapcore.AddSync(os.Stdout)), zapcore.DebugLevel)
 	//AddCaller()为显示文件名和行号
